@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"log"
+	"math"
 	"os"
 
 	"github.com/urfave/cli"
@@ -17,6 +18,7 @@ type coverage struct {
 
 func main() {
 	var coverFile, businessLogicFile string
+	var minCoverageThreshold float64
 
 	app := cli.NewApp()
 	app.Name = "go-agg-cov"
@@ -26,22 +28,34 @@ func main() {
 		cli.StringFlag{
 			Name:        "coverFile",
 			Value:       "",
-			Usage:       "coverage file to scan",
+			Usage:       "Coverage file to scan",
 			Destination: &coverFile,
 		},
 		cli.StringFlag{
 			Name:        "businessLogicFile",
 			Value:       "",
-			Usage:       "file containing list of business logic files",
+			Usage:       "Optional file containing list of business logic files",
 			Destination: &businessLogicFile,
+		},
+		cli.Float64Flag{
+			Name:        "minCoverageThreshold",
+			Value:       0,
+			Usage:       "Optional minimum coverage threshold percentage (breaks if under this value)",
+			Destination: &minCoverageThreshold,
 		},
 	}
 
 	app.Action = func(c *cli.Context) error {
 		log.Printf("Analyzing file %s\n", coverFile)
 		log.Printf("Business Logic file %s\n", businessLogicFile)
+		log.Printf("Minimum coverage threshold percentage %f %%\n", minCoverageThreshold)
+
 		if coverFile == "" {
 			log.Fatal("CoverFile is mandatory")
+		}
+
+		if minCoverageThreshold < 0 || minCoverageThreshold > 100 {
+			log.Fatal("Minimum coverage threshold must be in range [0-100]")
 		}
 
 		business, errBusiness := parseBusinessLogicFile(businessLogicFile)
@@ -58,6 +72,14 @@ func main() {
 		coverage.calculateCoverage(profiles, business)
 
 		log.Printf("Nb Statements: %d Coverage percentage: %f %%", coverage.Statements, coverage.PercentageCovered)
+
+		if math.IsNaN(coverage.PercentageCovered) {
+			log.Fatal("Wrong configuration: coverage percentage Not a Number")
+		}
+
+		if minCoverageThreshold > 0 && coverage.PercentageCovered < minCoverageThreshold {
+			log.Fatal("Minimum coverage threshold not reached")
+		}
 
 		return nil
 	}
