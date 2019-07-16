@@ -23,6 +23,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "go-agg-cov"
 	app.Usage = "Calculates a single coverage percentage from a go coverage file and a an optional list of go files representing the business logic"
+	app.Version = "0.0.2"
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
